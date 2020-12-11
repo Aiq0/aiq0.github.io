@@ -10,3 +10,15 @@ html {
 a {
 	color: #0ff
 }
+
+/* Basic classes */
+.left {
+	text-align: left
+}
+.center {
+	text-align: center
+}
+.right {
+	text-align: right
+}
+
