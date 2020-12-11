@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<head>
+	<title>Gerenátor QR kódov</title>
+	<script src="/js/qrcode.js"></script>
+	<style>
+		html {
+			background-color: #ddd
+		}
+		* {
+			font-family: Arial;
+		}
+		span#qr_data_showcase {
+			font-size: .75em;
+			font-style: italic;
+		}
+		input[type="range"] {
+			vertical-align: middle
+		}
+		button,input[type="checkbox"],input[type="color"] {
+			cursor: pointer;
+		}
+		button.big {
+			width:  200px;
+			height: 40px;
+			font-weight: bold;
+			font-size: 15px
+		}
+	</style>
+</head>
+<body>
+	<h1>Generátor QR kódov<h1>
+	S použitím upravenej verzie <a href="http://jeromeetienne.github.com/jquery-qrcode/" target="_blank">http://jeromeetienne.github.com/jquery-qrcode/</a>
+	<table>
+		<tr>
+			<td>Text / URL / dáta / ...</td>
+			<td><input id="qr_data" style="width:500px"></td>
+		</tr>
+		<tr>
+			<td>Typ dát (beta, zatiaľ nefunguje)</td>
+			<td>
+				<select id="qr_mode">
+					<option value="MODE_NUMBER">Iba čísla</option>
+					<option value="MODE_APLHA_NUM">A-Z 0-9 medzera $ % * + - . / :</option>
+					<option value="MODE_8BIT_BYTE" selected>8bitové (UTF-8,...)</option>
+					<option value="MODE_KANJI" disabled>Kanji (neimplementované)</option>
+				</select>
+			</td>
+		</tr>
+		<tr>
+			<td>Úroveň korekcie chýb</td>
+			<td><input type="range" id="qr_errorCorrect" min="1" max="4" value="4"><span id="qr_errorCorrect_text"></span></td>
+		</tr>
+		<tr>
+			<td>Tmavá farba</td>
+			<td><input type="color" id="qr_colorDark" value="#000000"></td>
+		</tr>
+		<tr>
+			<td>Svetlá farba</td>
+			<td><input type="color" id="qr_colorLight" value="#ffffff"></td>
+		</tr>
+		<tr>
+			<td>Veľkosť (px)</td>
+			<td><input type="number" id="qr_size" value="256">px</td>
+		</tr>
+		<tr>
+			<td>Okraje (% z veľkosti QR kódu)</td>
+			<td><input type="number" id="qr_padding" min="0" value="5">% (menšie okraje môže spôsobiť menšiu čítateľnosť a nemusia byť vždy prečítané)</td>
+		</tr>
+		<tr>
+			<td><button onclick="updateQR(true)" class="big">Vygenerovať QR kód</button></td>
+			<td><label><input type="checkbox" id="auto_gen">Automaticky vygenerovať pri úprave</label></td>
+		</tr>
+	</table>
+	
+	<h3>Finálny QR kód</h3>
+	<div id="qr_code" style="display:inline"></div>
+	<span id="qr_data_showcase">(prázdne)</span><br>
+	<button onclick="downloadImage()" class="big">Stiahnuť QR kód</button>
+	<script>
+		var qr_data=document.getElementById("qr_data");
+		var qr_mode=document.getElementById("qr_mode");
+		var qr_colorDark=document.getElementById("qr_colorDark");
+		var qr_colorLight=document.getElementById("qr_colorLight");
+		var qr_errorCorrect=document.getElementById("qr_errorCorrect");
+		var qr_errorCorrect_text=document.getElementById("qr_errorCorrect_text");
+		var qr_size=document.getElementById("qr_size");
+		var qr_padding=document.getElementById("qr_padding");
+		var auto_gen=document.getElementById("auto_gen");
+		var qr_data_showcase=document.getElementById("qr_data_showcase");
+
+		var qr = new QRCode(document.getElementById("qr_code"),'');
+
+		var correction=['L','M','Q','H'];
+		var correction_texts=['Nízka (7% dát môže byť obnovených)','Stredná (15% dát môže byť obnovených)','Kvartilné (25% dát môže byť obnovených)','Vysoké (30% dát môže byť obnovených)'];
+
+		qr_errorCorrect_text.innerHTML=correction_texts[qr_errorCorrect.value-1];
+		switch (qr_mode.value) {
+			case 'MODE_NUMBER':
+				qr_data.type='number';
+				qr_data.pattern='[0-9]+';
+				break;
+			case 'MODE_APLHA_NUM':
+				qr_data.type='text';
+				qr_data.pattern='[A-Z0-9$%*+\-./:]+';
+				break;
+			default:
+				qr_data.type='text';
+				qr_data.removeAttribute('pattern');
+				break;
+		}
+		qr.setMode(QRCode.Mode[qr_mode.value]);
+		qr.setDarkColor(qr_colorDark.value)
+		qr.setLightColor(qr_colorLight.value);
+		qr.setErrorCorrection(QRCode.CorrectLevel[correction[qr_errorCorrect.value-1]]);
+		qr.setSize(qr_size.value);
+		qr.setPadding(qr_size.value*qr_padding.value/100);
+
+
+		if (auto_gen.checked) {
+			qr_data_showcase.innerHTML=qr_data.value!='' ? qr_data.value : '(prázdne)';
+			qr.makeCode(qr_data.value);
+		}
+
+		function updateQR(force) {
+			if (!(force || auto_gen.checked)) {return;}
+			qr.clear();
+			try {
+				qr.makeCode(qr_data.value);
+				qr_data_showcase.innerHTML=qr_data.value!='' ? qr_data.value : '(prázdne)';
+			} catch(e) {
+				alert('Chyba pri vytváraní QR kódu:\n'+e.message);
+			}
+		}
+		qr_data.addEventListener('input',function(e) {
+			if (!auto_gen.checked) {return;}
+			updateQR();
+		});
+		qr_mode.addEventListener('change',function(e) {
+			qr.setMode(QRCode.Mode[qr_mode.value]);
+			updateQR();
+			switch (qr_mode.value) {
+				case 'MODE_NUMBER':
+					qr_data.type='number';
+					qr_data.pattern='[0-9]+';
+					break;
+				case 'MODE_APLHA_NUM':
+					qr_data.type='text';
+					qr_data.pattern='[A-Z0-9$%*+\-./:]+';
+					break;
+				default:
+					qr_data.type='text';
+					qr_data.removeAttribute('pattern');
+					break;
+			}
+		});
+		qr_colorDark.addEventListener('change',function(e) {
+			qr.setDarkColor(qr_colorDark.value);
+			updateQR();
+		});
+		qr_colorLight.addEventListener('change',function(e) {
+			qr.setLightColor(qr_colorLight.value);
+			updateQR();
+		});
+		qr_errorCorrect.addEventListener('change',function(e) {
+			qr.setErrorCorrection(QRCode.CorrectLevel[correction[qr_errorCorrect.value-1]]);
+			qr_errorCorrect_text.innerHTML=correction_texts[qr_errorCorrect.value-1];
+			updateQR();
+		});
+		qr_size.addEventListener('change',function(e) {
+			qr.setSize(qr_size.value);
+			updateQR();
+		});
+		qr_padding.addEventListener('change',function(e) {
+			qr.setPadding(qr_size.value*qr_padding.value/100);
+			updateQR();
+		});
+		auto_gen.addEventListener('change',updateQR)
+
+		function downloadImage() {
+			var element = document.createElement('a');
+			element.setAttribute('href', document.getElementById('qr_code').childNodes[0].toDataURL());
+			element.setAttribute('download', 'QR_code.png');
+			element.style.display = 'none';
+			document.body.appendChild(element);
+			element.click();
+			document.body.removeChild(element);
+		}
+	</script>
+</body>
